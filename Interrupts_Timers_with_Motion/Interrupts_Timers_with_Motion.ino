@@ -1,42 +1,65 @@
-#define intervalSeconds 3   
-
-const int ledPin = 26;
+int bluePin = 26;
 int motionSensor = 2;
 
-unsigned long lastTrigger = 0;  // will store last time LED was updated
-unsigned long now = millis();
-boolean startTimer = false;
-int motion = LOW;
+unsigned long previous = 0;
+String intervalSeconds;
+int intervalSecondsInteger;
+bool startTimer = false;
+bool motion = false;
 
-void detectsMovement() {
-  digitalWrite(ledPin, HIGH);
+void workingSensor() {
+  digitalWrite(bluePin, HIGH);
+
   startTimer = true;
-  lastTrigger = millis();
+  previous = millis();
 }
 
 void setup() {
   Serial.begin(115200);
 
   pinMode(motionSensor, INPUT);
-  attachInterrupt(digitalPinToInterrupt(motionSensor), detectsMovement, RISING);
+  attachInterrupt(digitalPinToInterrupt(motionSensor), workingSensor, RISING);
 
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, LOW);
+  pinMode(bluePin, OUTPUT);
+  digitalWrite(bluePin, LOW);
+
+  Serial.println("Enter the seconds that you want to turn on the LED when motion is detected...");
 }
 
 void loop() {
-  now = millis();
+  unsigned long now = millis();
 
-  if(digitalRead(ledPin) && (motion == false)) {
-    Serial.println("Motion detected");
-    Serial.println(digitalRead(ledPin));
-    motion = true;
+  if(Serial.available()) {
+    intervalSeconds = Serial.readString();
+    intervalSeconds.trim();
+
+    Serial.print("You entered ");
+    Serial.print(intervalSeconds);
+    Serial.println(" seconds");
+
+    intervalSecondsInteger = intervalSeconds.toInt() * 1000;
+
+    if(intervalSecondsInteger <= 0) {
+      Serial.println("Invalid input! Please enter a positive number.");
+    }
+    else {
+      Serial.print("LED will stay on for ");
+      Serial.print(intervalSecondsInteger / 1000);
+      Serial.println(" seconds when motion is deteced.");
+    }
   }
 
-  if(startTimer && (now - lastTrigger > (intervalSeconds * 1000))) {
-    Serial.println("Motion stopped");
-    digitalWrite(ledPin, LOW);
+  if(motion == false) {
+    motion = true;
+
+    Serial.println("Motion is detected.");
+  }
+
+  if(startTimer && (now - previous >= intervalSecondsInteger)) {
     startTimer = false;
     motion = false;
+
+    digitalWrite(bluePin, LOW);
+    Serial.println("Motion is stopped! ");
   }
 }
